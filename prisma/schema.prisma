@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events    Event[]
+}
+
+model Event {
+  id                Int      @id @default(autoincrement())
+  title             String
+  userId            Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  gifts             Gift[]
+  publicUrl         String?  @unique
+  publicUrlExpiration DateTime? 
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+model Gift {
+  id           Int             @id @default(autoincrement())
+  name         String
+  eventId      Int
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  isReserved   Boolean         @default(false) 
+  event        Event           @relation(fields: [eventId], references: [id])
+  reservations GiftReservation[]
+}
+
+model GiftReservation {
+  id           Int      @id @default(autoincrement())
+  giftId       Int
+  name         String
+  email        String
+  code         String?  
+  isConfirmed  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  gift         Gift     @relation(fields: [giftId], references: [id])
+}
