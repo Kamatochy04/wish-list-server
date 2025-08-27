@@ -7,47 +7,80 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Currency {
+  USD
+  BYN
+  RUB
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  events    Event[]
+  id          Int               @id @default(autoincrement())
+  email       String            @unique
+  password    String
+  name        String?
+  currency    Currency?        
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  events      Event[]
+  gifts       Gift[]            @relation("UserGifts")
+  reservation GiftReservation[]
+  likes       GiftLike[]        @relation("UserLikes")
 }
 
 model Event {
-  id                Int      @id @default(autoincrement())
-  title             String
-  userId            Int
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  gifts             Gift[]
-  publicUrl         String?  @unique
-  publicUrlExpiration DateTime? 
-  user              User     @relation(fields: [userId], references: [id])
+  id                 Int       @id @default(autoincrement())
+  title              String
+  userId             Int
+  description        String?
+  eventDate          DateTime?
+  imagePath          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  publicUrl          String?   @unique
+  publicUrlExpiration DateTime?
+  user               User      @relation(fields: [userId], references: [id])
+  gifts              Gift[]
 }
 
 model Gift {
   id           Int             @id @default(autoincrement())
   name         String
-  eventId      Int
+  eventId      Int?
+  userId       Int
+  description  String?         
+  imagePath    String?         
+  price        Int?        
+  currency     Currency?       
+  externalLink String?         
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
-  isReserved   Boolean         @default(false) 
-  event        Event           @relation(fields: [eventId], references: [id])
+  isReserved   Boolean         @default(false)
+  likes        Int             @default(0) 
+  event        Event?          @relation(fields: [eventId], references: [id])
+  user         User            @relation("UserGifts", fields: [userId], references: [id])
   reservations GiftReservation[]
+  giftLikes    GiftLike[]      @relation("GiftLikes")
 }
 
 model GiftReservation {
-  id           Int      @id @default(autoincrement())
-  giftId       Int
-  name         String
-  email        String
-  code         String?  
-  isConfirmed  Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  gift         Gift     @relation(fields: [giftId], references: [id])
+  id          Int      @id @default(autoincrement())
+  giftId      Int
+  userId      Int
+  name        String?
+  email       String
+  code        String
+  isConfirmed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  gift        Gift     @relation(fields: [giftId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model GiftLike {
+  id        Int      @id @default(autoincrement())
+  giftId    Int
+  userId    Int
+  createdAt DateTime @default(now())
+  gift      Gift     @relation("GiftLikes", fields: [giftId], references: [id])
+  user      User     @relation("UserLikes", fields: [userId], references: [id])
+  @@unique([giftId, userId])
 }

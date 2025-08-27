@@ -1,11 +1,11 @@
-import { Request, Response } from "express";
-import * as giftReservationService from "../services/giftReservationService";
+import { Request, Response } from 'express';
+import * as giftReservationService from '../services/giftReservationService';
 
-import { z } from "zod";
+import { z } from 'zod';
 import {
   confirmReservationSchema,
   reserveGiftSchema,
-} from "../validation/validation";
+} from '../validation/validation';
 
 export const reserveGift = async (req: Request, res: Response) => {
   try {

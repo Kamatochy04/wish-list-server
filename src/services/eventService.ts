@@ -1,70 +1,124 @@
-import { PrismaClient } from "@prisma/client";
-import redisClient from "../config/redis";
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const createEvent = async (userId: number, title: string) => {
-  return prisma.event.create({
-    data: { title, userId },
+export const getUserEvents = async (userId: number, baseUrl: string) => {
+  const events = await prisma.event.findMany({
+    where: { userId },
+    include: { gifts: { select: { id: true, name: true } } },
   });
+
+  return events.map(event => ({
+    ...event,
+    imagePath: event.imagePath
+      ? `${baseUrl}/uploads/events/${event.imagePath}`
+      : null,
+    eventDate: event.eventDate ? event.eventDate.toISOString() : null,
+    createdAt: event.createdAt.toISOString(),
+    updatedAt: event.updatedAt.toISOString(),
+    publicUrlExpiration: event.publicUrlExpiration
+      ? event.publicUrlExpiration.toISOString()
+      : null,
+  }));
 };
 
-export const deleteEvent = async (userId: number, eventId: number) => {
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId },
+export const createEvent = async (
+  userId: number,
+  data: { title: string; description?: string; eventDate?: string },
+  imagePath?: string,
+  baseUrl?: string
+) => {
+  const event = await prisma.event.create({
+    data: {
+      title: data.title,
+      userId,
+      description: data.description,
+      eventDate: data.eventDate ? new Date(data.eventDate) : undefined,
+      imagePath,
+    },
+    include: { gifts: { select: { id: true, name: true } } },
   });
-  if (!event) throw new Error("Event not found or not authorized");
-  await prisma.event.delete({ where: { id: eventId } });
+
+  return {
+    ...event,
+    imagePath: event.imagePath
+      ? `${baseUrl}/uploads/events/${event.imagePath}`
+      : null,
+    eventDate: event.eventDate ? event.eventDate.toISOString() : null,
+    createdAt: event.createdAt.toISOString(),
+    updatedAt: event.updatedAt.toISOString(),
+    publicUrlExpiration: event.publicUrlExpiration
+      ? event.publicUrlExpiration.toISOString()
+      : null,
+  };
 };
 
 export const updateEvent = async (
-  userId: number,
   eventId: number,
-  title: string
+  userId: number,
+  data: { title?: string; description?: string; eventDate?: string },
+  imagePath?: string,
+  baseUrl?: string
 ) => {
   const event = await prisma.event.findFirst({
     where: { id: eventId, userId },
   });
-  if (!event) throw new Error("Event not found or not authorized");
-  return prisma.event.update({
+  if (!event) throw new Error('Событие не найдено или вы не авторизованы');
+
+  const updatedEvent = await prisma.event.update({
     where: { id: eventId },
-    data: { title },
+    data: {
+      title: data.title,
+      description: data.description,
+      eventDate: data.eventDate ? new Date(data.eventDate) : undefined,
+      imagePath,
+    },
+    include: { gifts: { select: { id: true, name: true } } },
   });
+
+  return {
+    ...updatedEvent,
+    imagePath: updatedEvent.imagePath
+      ? `${baseUrl}/uploads/events/${updatedEvent.imagePath}`
+      : null,
+    eventDate: updatedEvent.eventDate
+      ? updatedEvent.eventDate.toISOString()
+      : null,
+    createdAt: updatedEvent.createdAt.toISOString(),
+    updatedAt: updatedEvent.updatedAt.toISOString(),
+    publicUrlExpiration: updatedEvent.publicUrlExpiration,
+  };
 };
 
-export const getUserEvents = async (userId: number) => {
-  return prisma.event.findMany({ where: { userId }, include: { gifts: true } });
+export const getEventById = async (
+  eventId: number,
+  userId: number,
+  baseUrl: string
+) => {
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, userId },
+    include: { gifts: { select: { id: true, name: true } } },
+  });
+  if (!event) throw new Error('Событие не найдено или вы не авторизованы');
+
+  return {
+    ...event,
+    imagePath: event.imagePath
+      ? `${baseUrl}/uploads/events/${event.imagePath}`
+      : null,
+    eventDate: event.eventDate ? event.eventDate.toISOString() : null,
+    createdAt: event.createdAt.toISOString(),
+    updatedAt: event.updatedAt.toISOString(),
+    publicUrlExpiration: event.publicUrlExpiration
+      ? event.publicUrlExpiration.toISOString()
+      : null,
+  };
 };
 
-export const generatePublicUrl = async (eventId: number, userId: number) => {
+export const deleteEvent = async (eventId: number, userId: number) => {
   const event = await prisma.event.findFirst({
     where: { id: eventId, userId },
   });
-  if (!event) throw new Error("Event not found or not authorized");
-
-  // Dynamically import nanoid
-  const { nanoid } = await import("nanoid");
-  const shortId = nanoid(8);
-  const publicUrl = `http://localhost:${process.env.PORT}/events/public/${shortId}`;
-  await prisma.event.update({
-    where: { id: eventId },
-    data: { publicUrl },
-  });
-  await redisClient.setEx(
-    `url:${shortId}`,
-    30 * 24 * 60 * 60,
-    eventId.toString()
-  );
-  return publicUrl;
-};
-
-export const getPublicEvent = async (shortId: string) => {
-  const eventId = await redisClient.get(`url:${shortId}`);
-  if (!eventId) throw new Error("Invalid or expired URL");
-  const event = await prisma.event.findUnique({
-    where: { id: parseInt(eventId) },
-    include: { gifts: true },
-  });
-  if (!event) throw new Error("Event not found");
-  return event;
+  if (!event) throw new Error('Событие не найдено или вы не авторизованы');
+  await prisma.event.delete({ where: { id: eventId } });
 };

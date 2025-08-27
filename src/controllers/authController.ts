@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
-import * as authService from "../services/authService";
-import { z } from "zod";
-import { signinSchema, signupSchema } from "../validation/validation";
+import { Request, Response } from 'express';
+import * as authService from '../services/authService';
+import { z } from 'zod';
+import { signinSchema, signupSchema } from '../validation/validation';
 
 export const signup = async (req: Request, res: Response) => {
   try {
@@ -9,7 +9,8 @@ export const signup = async (req: Request, res: Response) => {
     const { user, token } = await authService.signup(
       data.email,
       data.password,
-      data.name
+      data.name,
+      'USD'
     );
     res.status(201).json({ user, token });
   } catch (error) {
